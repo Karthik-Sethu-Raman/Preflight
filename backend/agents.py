@@ -4,14 +4,14 @@ import os
 import re
 from openai import AsyncOpenAI
 
-# Initialize the Async Client pointing to Groq for local testing
+# Initialize the Async Client pointing to Fireworks AI
 client = AsyncOpenAI(
-    base_url="https://api.groq.com/openai/v1",
-    api_key=os.environ.get("GROQ_API_KEY")
+    base_url="https://api.fireworks.ai/inference/v1",
+    api_key=os.environ.get("FIREWORKS_API_KEY")
 )
 
-# Using your updated model name
-MODEL_NAME = "llama-3.1-8b-instant"
+# Using the specified Fireworks model
+MODEL_NAME = "accounts/fireworks/models/qwen2p5-7b-instruct"
 
 def extract_clean_json(text_response):
     """

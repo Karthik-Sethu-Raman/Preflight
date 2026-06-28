@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+networkx
+python-hcl2
+httpx
+openai
+python-dotenv

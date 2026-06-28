@@ -1,9 +1,13 @@
 import json
 import shutil
-import subprocess
+import os
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Import your hardened Phase 1, 2, and 4 logic
 from engine import build_graph_from_plan, enrich_graph_with_hcl
@@ -21,8 +25,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global state to track which .tf file to use for HCL enrichment
+# Global state to track which .tf file to use for HCL enrichment and cache the graph
 CURRENT_TF_FILE = "main.tf"
+CURRENT_GRAPH = {
+    "data": None,      # The dict returned to the frontend (nodes + links)
+    "nx_graph": None   # The NetworkX graph object used for simulation
+}
 
 class SimulateRequest(BaseModel):
     node_id: str
@@ -43,16 +51,28 @@ def get_formatted_graph(json_plan_path, tf_file_path):
     ]
     return {"nodes": nodes, "links": links}, G
 
+def init_graph():
+    """Initializes the cached graph on startup."""
+    global CURRENT_GRAPH
+    if os.path.exists("plan.json") and os.path.exists(CURRENT_TF_FILE):
+        data, nx_graph = get_formatted_graph("plan.json", CURRENT_TF_FILE)
+        CURRENT_GRAPH["data"] = data
+        CURRENT_GRAPH["nx_graph"] = nx_graph
+
+# Initialize graph on startup
+init_graph()
+
 @app.get("/api/graph")
 def get_graph():
-    """Returns the current infrastructure topography."""
-    graph_data, _ = get_formatted_graph("plan.json", CURRENT_TF_FILE)
-    return graph_data
+    """Returns the current infrastructure topography from cache."""
+    if not CURRENT_GRAPH["data"]:
+        init_graph()
+    return CURRENT_GRAPH["data"]
 
 @app.post("/api/upload")
 async def upload_tf(file: UploadFile = File(...)):
-    """Accepts a new .tf file, runs Terraform dynamically, and generates a fresh graph."""
-    global CURRENT_TF_FILE
+    """Accepts a new .tf file, saves it, and regenerates the graph from existing plan.json."""
+    global CURRENT_TF_FILE, CURRENT_GRAPH
     
     # 1. Overwrite the main.tf file with the newly uploaded code
     with open("main.tf", "wb") as buffer:
@@ -60,29 +80,24 @@ async def upload_tf(file: UploadFile = File(...)):
         
     CURRENT_TF_FILE = "main.tf"
     
+    # 2. Skip Terraform subprocess calls for now — just parse whatever plan.json exists
     try:
-        # 2. Dynamically run Terraform to calculate the new graph!
-        # This simulates exactly what you did manually in your terminal during Phase 1
-        subprocess.run(["terraform", "init"], check=True, capture_output=True)
-        subprocess.run(["terraform", "plan", "-out=tfplan"], check=True, capture_output=True)
-        
-        # 3. Convert the new plan to JSON and overwrite plan.json
-        with open("plan.json", "w") as f:
-            subprocess.run(["terraform", "show", "-json", "tfplan"], stdout=f, check=True)
-            
-    except subprocess.CalledProcessError as e:
-        # If the user uploads broken Terraform code, catch the error gracefully
-        print(f"Terraform Error: {e.stderr}")
-        raise HTTPException(status_code=400, detail="Invalid Terraform configuration uploaded.")
+        data, nx_graph = get_formatted_graph("plan.json", CURRENT_TF_FILE)
+        CURRENT_GRAPH["data"] = data
+        CURRENT_GRAPH["nx_graph"] = nx_graph
+    except Exception as e:
+        print(f"Error parsing graph: {e}")
+        raise HTTPException(status_code=400, detail="Invalid configuration.")
 
-    # 4. Return the completely new, dynamically generated graph
-    graph_data, _ = get_formatted_graph("plan.json", CURRENT_TF_FILE)
-    return graph_data
+    # 3. Return the completely new, dynamically generated graph
+    return CURRENT_GRAPH["data"]
 
 @app.post("/api/simulate")
 async def simulate(req: SimulateRequest):
     """Executes the deterministic BFS propagation and dispatches the AI agents."""
-    _, G = get_formatted_graph("plan.json", CURRENT_TF_FILE)
+    G = CURRENT_GRAPH["nx_graph"]
+    if not G:
+        raise HTTPException(status_code=400, detail="Graph not initialized.")
     
     # 1. Run BFS Math
     blast_result = simulate_failure(G, req.node_id, req.failure_type)
