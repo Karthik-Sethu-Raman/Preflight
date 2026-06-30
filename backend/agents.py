@@ -7,7 +7,7 @@ from openai import AsyncOpenAI
 # Initialize the Async Client pointing to Fireworks AI
 client = AsyncOpenAI(
     base_url="https://api.fireworks.ai/inference/v1",
-    api_key=os.environ.get("FIREWORKS_API_KEY")
+    api_key=os.environ.get("FIREWORKS_API_KEY", "dummy_key_to_prevent_crash")
 )
 
 # Using the specified Fireworks model

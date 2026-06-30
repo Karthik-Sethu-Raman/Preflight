@@ -7,8 +7,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    environment:
-      - FIREWORKS_API_KEY=${FIREWORKS_API_KEY}
     env_file:
       - .env
 
