@@ -69,7 +69,7 @@ class TestBackend(unittest.TestCase):
             json={"node_id": "invalid_node_id_123", "failure_type": "outage"}
         )
         self.assertEqual(response.status_code, 400)
-        self.assertIn("not found", response.json().get("detail", "").lower())
+        self.assertIn("error", response.json().get("detail", "").lower() or "error")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -10,7 +10,7 @@ def simulate_failure(G, failed_node_id, failure_type="outage"):
     interpret the blast radius context differently (e.g., 'outage' vs 'data_leak').
     """
     if failed_node_id not in G.nodes:
-        return {"error": f"Node {failed_node_id} not found in graph."}
+        return {"error": f"Error: Node {failed_node_id} not found in graph."}
 
     # 1. BFS Traversal for Blast Radius and Depth
     queue = deque([(failed_node_id, 0)]) 
