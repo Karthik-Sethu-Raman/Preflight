@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch, AsyncMock
+# pyrefly: ignore [missing-import]
 from fastapi.testclient import TestClient
 from main import app
 
@@ -61,6 +62,28 @@ class TestBackend(unittest.TestCase):
         agents = data["agents"]
         self.assertEqual(agents["Reliability"]["downtime_estimate_minutes"], 45)
         self.assertEqual(agents["Security"]["exposure_risk_level"], "High")
+
+    def test_simulate_live_fireworks(self):
+        """Test the simulate endpoint against the LIVE Fireworks AI model."""
+        import os
+        api_key = os.environ.get("FIREWORKS_API_KEY")
+        if not api_key or api_key == "?":
+            self.skipTest("No valid FIREWORKS_API_KEY found in environment.")
+
+        response = self.client.post(
+            "/api/simulate",
+            json={"node_id": "aws_vpc.main", "failure_type": "outage"}
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        
+        data = response.json()
+        self.assertIn("blast_radius", data)
+        self.assertIn("agents", data)
+        
+        agents = data["agents"]
+        self.assertIn("Reliability", agents)
+        self.assertIn("Security", agents)
+        self.assertIn("Cost", agents)
 
     def test_simulate_invalid_node(self):
         """Test simulate with an invalid node id."""

@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import re
+# pyrefly: ignore [missing-import]
 from openai import AsyncOpenAI
 
 # Initialize the Async Client pointing to Fireworks AI
@@ -11,7 +12,7 @@ client = AsyncOpenAI(
 )
 
 # Using the specified Fireworks model
-MODEL_NAME = "accounts/fireworks/models/qwen2p5-7b-instruct"
+MODEL_NAME = "accounts/fireworks/models/llama-v3p1-8b-instruct"
 
 def extract_clean_json(text_response):
     """
@@ -39,17 +40,26 @@ async def run_agent(agent_name, system_prompt, enriched_payload):
     # CLAUDE'S FIX: Add default=str to safely serialize any non-standard objects from Terraform
     user_content = json.dumps(enriched_payload, indent=2, default=str)
 
-    response = await client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Analyze this failure event:\n{user_content}"}
-        ],
-        temperature=0.1, 
-    )
-    
-    raw_text = response.choices[0].message.content
-    return agent_name, extract_clean_json(raw_text)
+    try:
+        response = await client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Analyze this failure event:\n{user_content}"}
+            ],
+            temperature=0.1, 
+        )
+        raw_text = response.choices[0].message.content
+        return agent_name, extract_clean_json(raw_text)
+    except Exception as e:
+        print(f"[{agent_name} Agent] Error calling Fireworks AI:")
+        if hasattr(e, 'response'):
+            print(f"Status Code: {e.response.status_code}")
+            print(f"Response Body: {e.response.text}")
+        else:
+            print(str(e))
+        
+        return agent_name, {"error": "API Call Failed", "details": str(e)}
 
 async def analyze_scenario(enriched_payload):
     """Fires all 3 agents concurrently with the FULL raw_hcl context."""

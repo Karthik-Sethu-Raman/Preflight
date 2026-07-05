@@ -1,6 +1,7 @@
 import json
 import shutil
 import os
+import subprocess
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -80,14 +81,29 @@ async def upload_tf(file: UploadFile = File(...)):
         
     CURRENT_TF_FILE = "main.tf"
     
-    # 2. Skip Terraform subprocess calls for now — just parse whatever plan.json exists
+    # 2. Run Terraform subprocess calls to regenerate plan.json dynamically
     try:
+        # Initialize
+        subprocess.run(["terraform", "init"], check=True, capture_output=True, cwd=".", text=True)
+        # Plan
+        subprocess.run(["terraform", "plan", "-out=tfplan"], check=True, capture_output=True, cwd=".", text=True)
+        # Show as JSON
+        result = subprocess.run(["terraform", "show", "-json", "tfplan"], check=True, capture_output=True, cwd=".", text=True)
+        
+        # Overwrite plan.json
+        with open("plan.json", "w", encoding="utf-8") as f:
+            f.write(result.stdout)
+            
+        # Parse the dynamically generated plan.json
         data, nx_graph = get_formatted_graph("plan.json", CURRENT_TF_FILE)
         CURRENT_GRAPH["data"] = data
         CURRENT_GRAPH["nx_graph"] = nx_graph
+    except subprocess.CalledProcessError as e:
+        print(f"Terraform error: {e.stderr}")
+        raise HTTPException(status_code=400, detail="Terraform validation failed. Check your syntax.")
     except Exception as e:
         print(f"Error parsing graph: {e}")
-        raise HTTPException(status_code=400, detail="Invalid configuration.")
+        raise HTTPException(status_code=500, detail="Failed to parse the new graph.")
 
     # 3. Return the completely new, dynamically generated graph
     return CURRENT_GRAPH["data"]

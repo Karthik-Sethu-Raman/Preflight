@@ -29,8 +29,51 @@ export default function App() {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const [simulationStarted, setSimulationStarted] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const graphRef = useRef();
+  const fileInputRef = useRef(null);
+
+  const handleZoomIn = () => {
+    if (graphRef.current) {
+      const { x, y, z } = graphRef.current.cameraPosition();
+      graphRef.current.cameraPosition({ x: x * 0.7, y: y * 0.7, z: z * 0.7 }, null, 300);
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (graphRef.current) {
+      const { x, y, z } = graphRef.current.cameraPosition();
+      graphRef.current.cameraPosition({ x: x * 1.4, y: y * 1.4, z: z * 1.4 }, null, 300);
+    }
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    fetch('http://localhost:8000/api/upload', {
+      method: 'POST',
+      body: formData,
+    })
+      .then(res => {
+        if (!res.ok) throw new Error("Backend validation failed.");
+        return res.json();
+      })
+      .then(data => {
+        setGraphData(data);
+        setIsUploading(false);
+      })
+      .catch(err => {
+        console.error("Upload failed:", err);
+        alert("Upload failed. Ensure the Terraform syntax is valid and try again.");
+        setIsUploading(false);
+      });
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -220,6 +263,12 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* Zoom Controls */}
+        <div style={styles.zoomControls}>
+          <button style={styles.zoomButton} onClick={handleZoomIn}>+</button>
+          <button style={styles.zoomButton} onClick={handleZoomOut}>-</button>
+        </div>
       </div>
 
       <div style={styles.hudSidebar}>
@@ -232,6 +281,20 @@ export default function App() {
             <span style={styles.proBadge}>PRO</span>
           </div>
           <p style={styles.subtitle}>Infrastructure Risk Engine</p>
+
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            style={{ display: 'none' }} 
+            accept=".tf"
+          />
+          <button 
+            style={styles.uploadButton}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {isUploading ? 'UPLOADING...' : 'UPLOAD TERRAFORM (.tf)'}
+          </button>
 
           <div style={styles.divider}></div>
 
@@ -697,6 +760,43 @@ const styles = {
     fontSize: '13px',
     cursor: 'pointer',
     borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+    transition: 'all 0.2s ease',
+  },
+  zoomControls: {
+    position: 'absolute',
+    bottom: '40px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    display: 'flex',
+    gap: '10px',
+    zIndex: 10,
+  },
+  zoomButton: {
+    backgroundColor: 'rgba(20,20,25,0.8)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    color: '#fff',
+    width: '40px',
+    height: '40px',
+    borderRadius: '8px',
+    fontSize: '20px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backdropFilter: 'blur(10px)',
+    transition: 'all 0.2s',
+  },
+  uploadButton: {
+    width: '100%',
+    padding: '10px',
+    backgroundColor: 'transparent',
+    border: '1px dashed rgba(255, 255, 255, 0.3)',
+    color: 'rgba(255,255,255,0.8)',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    marginTop: '10px',
+    fontFamily: 'Orbitron, sans-serif',
     transition: 'all 0.2s ease',
   }
 };
