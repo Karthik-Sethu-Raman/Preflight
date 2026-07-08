@@ -12,7 +12,7 @@ client = AsyncOpenAI(
 )
 
 # Using the specified Fireworks model
-MODEL_NAME = "accounts/fireworks/models/llama-v3p1-8b-instruct"
+MODEL_NAME = "accounts/fireworks/models/deepseek-v4-pro"
 
 def extract_clean_json(text_response):
     """
@@ -67,11 +67,11 @@ async def analyze_scenario(enriched_payload):
     base_instructions = "You are a machine API. You must respond ONLY with valid, minified JSON. No markdown, no backticks, no conversational text."
 
     prompts = {
-        "Reliability": f"You are a Cloud Reliability Engineer. Analyze the blast radius metrics and affected resources. Return a JSON object with 'downtime_estimate_minutes' (integer) and 'critical_spofs' (list of strings). {base_instructions}",
+        "Reliability": f"You are a Cloud Reliability Engineer analyzing a failure event. Return a JSON object with: 'downtime_estimate_minutes' (int), 'critical_spofs' (list of strings), 'cascading_impact_summary' (a detailed 2-3 sentence paragraph explaining exactly how this failure spreads to downstream components), and 'mitigation_steps' (list of 3 actionable steps to restore service). {base_instructions}",
         
-        "Security": f"You are a Cloud Security Engineer. Analyze the raw_hcl of the affected resources for IAM/SG misconfigurations or exposure risks. Return a JSON object with 'exposure_risk_level' (Low/Medium/High) and 'iam_sg_warnings' (list of strings). {base_instructions}",
+        "Security": f"You are a Cloud Security Engineer. Analyze the raw_hcl of the affected resources for IAM/SG misconfigurations or exposure risks. Return a JSON object with: 'exposure_risk_level' (Low/Medium/High/Critical), 'iam_sg_warnings' (list of strings), 'attack_vectors' (a detailed 2-3 sentence paragraph describing how a malicious actor could exploit this topology), and 'compliance_violations' (list of potential SOC2/PCI violations). {base_instructions}",
         
-        "Cost": f"You are a Cloud FinOps Engineer. Analyze the affected resource types. Return a JSON object with 'orphaned_resource_cost_estimate' (integer) and 'financial_impact_summary' (string). {base_instructions}"
+        "Cost": f"You are a Cloud FinOps Engineer. Analyze the affected resource types. Return a JSON object with: 'orphaned_resource_cost_estimate' (int), 'financial_impact_summary' (detailed 2-3 sentence explanation of the blast radius cost, including SLA penalties or hidden data transfer costs), and 'hourly_burn_rate' (estimated waste per hour in dollars). {base_instructions}"
     }
 
     tasks = [

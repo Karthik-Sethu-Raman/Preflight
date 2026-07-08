@@ -205,7 +205,7 @@ export default function App() {
     textSprite.color = 'rgba(255, 255, 255, 0.85)';
     textSprite.textHeight = 3.0; // Increased from 1.5
     textSprite.fontWeight = '500';
-    textSprite.fontFace = 'Orbitron, sans-serif'; // Changed font
+    textSprite.fontFace = 'Saira, sans-serif'; // Changed font
     textSprite.position.set(0, -9, 0); // Adjusted position for larger text
     group.add(textSprite);
 
@@ -242,7 +242,6 @@ export default function App() {
             <div style={styles.cardGlowPurple}></div>
             <div style={styles.cardInner}>
               <div style={styles.cardHeader}>
-                <div style={{...styles.cardIcon, color: '#D946EF', textShadow: '0 0 10px rgba(217, 70, 239, 0.8)'}}>🎯</div>
                 Target Acquired
               </div>
               <div style={styles.cardBody}>
@@ -278,7 +277,6 @@ export default function App() {
             <div style={styles.logoGlow}>
               <h1 style={styles.title}>Preflight AI</h1>
             </div>
-            <span style={styles.proBadge}>PRO</span>
           </div>
           <p style={styles.subtitle}>Infrastructure Risk Engine</p>
 
@@ -380,7 +378,6 @@ export default function App() {
                 <div style={styles.cardGlowBlue}></div>
                 <div style={styles.cardInner}>
                   <div style={styles.cardHeader}>
-                    <div style={{...styles.cardIcon, color: '#3B82F6', textShadow: '0 0 10px rgba(59, 130, 246, 0.8)'}}>⚡</div>
                     Reliability Core
                   </div>
                   <div style={styles.cardBody}>
@@ -399,6 +396,17 @@ export default function App() {
                         : <span style={styles.tag}>None detected</span>
                       }
                     </div>
+                    {agentsData.Reliability.cascading_impact_summary && (
+                      <p style={styles.insightText}><strong>Impact:</strong> {agentsData.Reliability.cascading_impact_summary}</p>
+                    )}
+                    {agentsData.Reliability.mitigation_steps?.length > 0 && (
+                      <div style={{marginTop: '4px'}}>
+                        <span style={styles.dataLabel}>Mitigation Steps:</span>
+                        <ul style={{...styles.list, color: '#3B82F6', textShadow: 'none'}}>
+                          {agentsData.Reliability.mitigation_steps.map((w, i) => <li key={i}>{w}</li>)}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -407,7 +415,6 @@ export default function App() {
                 <div style={styles.cardGlowPurple}></div>
                 <div style={styles.cardInner}>
                   <div style={styles.cardHeader}>
-                    <div style={{...styles.cardIcon, color: '#D946EF', textShadow: '0 0 10px rgba(217, 70, 239, 0.8)'}}>🛡️</div>
                     Security Core
                   </div>
                   <div style={styles.cardBody}>
@@ -427,6 +434,19 @@ export default function App() {
                     <ul style={styles.list}>
                       {agentsData.Security.iam_sg_warnings?.map((w, i) => <li key={i}>{w}</li>)}
                     </ul>
+                    {agentsData.Security.attack_vectors && (
+                      <p style={styles.insightText}><strong>Attack Vector:</strong> {agentsData.Security.attack_vectors}</p>
+                    )}
+                    {agentsData.Security.compliance_violations?.length > 0 && (
+                      <div style={{marginTop: '4px'}}>
+                        <span style={styles.dataLabel}>Compliance Risks:</span>
+                        <div style={styles.tagsContainer}>
+                          {agentsData.Security.compliance_violations.map((v, i) => (
+                            <span key={i} style={{...styles.tag, borderColor: '#F59E0B', color: '#F59E0B'}}>{v}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -435,7 +455,6 @@ export default function App() {
                 <div style={styles.cardGlowGreen}></div>
                 <div style={styles.cardInner}>
                   <div style={styles.cardHeader}>
-                    <div style={{...styles.cardIcon, color: '#00FFAA', textShadow: '0 0 10px rgba(0, 255, 170, 0.8)'}}>💰</div>
                     Financial Core
                   </div>
                   <div style={styles.cardBody}>
@@ -443,6 +462,12 @@ export default function App() {
                       <span style={styles.dataLabel}>Orphaned Spend:</span>
                       <span style={{...styles.dataValue, fontSize: '18px', color: '#00FFAA', textShadow: '0 0 10px rgba(0,255,170,0.5)'}}>
                         ${agentsData.Cost.orphaned_resource_cost_estimate}
+                      </span>
+                    </p>
+                    <p style={styles.dataRow}>
+                      <span style={styles.dataLabel}>Hourly Burn Rate:</span>
+                      <span style={{...styles.dataValue, color: '#F59E0B'}}>
+                        ${agentsData.Cost.hourly_burn_rate || 0}/hr
                       </span>
                     </p>
                     <p style={styles.insightText}>{agentsData.Cost.financial_impact_summary}</p>
@@ -796,7 +821,7 @@ const styles = {
     cursor: 'pointer',
     fontSize: '13px',
     marginTop: '10px',
-    fontFamily: 'Orbitron, sans-serif',
+    fontFamily: 'Saira, sans-serif',
     transition: 'all 0.2s ease',
   }
 };
