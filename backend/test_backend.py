@@ -33,7 +33,7 @@ class TestBackend(unittest.TestCase):
         mock_analyze.return_value = {
             "Reliability": {
                 "downtime_estimate_minutes": 45,
-                "critical_spofs": ["aws_vpc.main"]
+                "critical_spofs": ["aws_vpc.test_vpc"]
             },
             "Security": {
                 "exposure_risk_level": "High",
@@ -47,7 +47,7 @@ class TestBackend(unittest.TestCase):
         
         response = self.client.post(
             "/api/simulate",
-            json={"node_id": "aws_vpc.main", "failure_type": "outage"}
+            json={"node_id": "aws_vpc.test_vpc", "failure_type": "outage"}
         )
         self.assertEqual(response.status_code, 200, response.text)
         
@@ -72,7 +72,7 @@ class TestBackend(unittest.TestCase):
 
         response = self.client.post(
             "/api/simulate",
-            json={"node_id": "aws_vpc.main", "failure_type": "outage"}
+            json={"node_id": "aws_vpc.test_vpc", "failure_type": "outage"}
         )
         self.assertEqual(response.status_code, 200, response.text)
         

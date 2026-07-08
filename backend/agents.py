@@ -2,6 +2,8 @@ import asyncio
 import json
 import os
 import re
+import urllib.parse
+import httpx
 # pyrefly: ignore [missing-import]
 from openai import AsyncOpenAI
 
@@ -61,17 +63,83 @@ async def run_agent(agent_name, system_prompt, enriched_payload):
         
         return agent_name, {"error": "API Call Failed", "details": str(e)}
 
+async def fetch_web_info(resource_type, search_category):
+    """
+    Perform a free web search via DuckDuckGo HTML for info related to the service/resource type.
+    Categories: 'pricing', 'security', 'reliability'
+    """
+    friendly = resource_type.replace("aws_", "AWS ").replace("_", " ")
+    
+    if search_category == "reliability":
+        query = f"{friendly} common outage reliability failure cascading impact"
+    elif search_category == "security":
+        query = f"{friendly} vulnerability data leak security exposure risk CVE"
+    elif search_category == "pricing":
+        query = f"{friendly} pricing hourly cost rate"
+    else:
+        query = f"{friendly} overview"
+        
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=headers, timeout=5.0)
+            if resp.status_code == 200:
+                snippets = re.findall(r'<a class="result__snippet"[^>]*>(.*?)</a>', resp.text, re.DOTALL)
+                results = []
+                for s in snippets[:2]:  # Get top 2 snippets
+                    clean_s = re.sub(r'<[^>]+>', '', s).strip()
+                    results.append(clean_s)
+                if results:
+                    return resource_type, search_category, "\n".join(results)
+    except Exception as e:
+        print(f"[Web Search] Failed for {resource_type} ({search_category}): {e}")
+    return resource_type, search_category, "No additional online information could be found."
+
 async def analyze_scenario(enriched_payload):
-    """Fires all 3 agents concurrently with the FULL raw_hcl context."""
+    """Fires all 3 agents concurrently with the FULL raw_hcl context and web-searched context."""
+    
+    # 1. Extract unique resource types from affected resources
+    affected_resources = enriched_payload.get("affected_resources", {})
+    resource_types = set()
+    for res in affected_resources.values():
+        if isinstance(res, dict) and "type" in res:
+            resource_types.add(res["type"])
+            
+    # 2. Concurrently fetch web information for each unique resource type across three categories
+    search_tasks = []
+    for res_type in resource_types:
+        search_tasks.append(fetch_web_info(res_type, "reliability"))
+        search_tasks.append(fetch_web_info(res_type, "security"))
+        search_tasks.append(fetch_web_info(res_type, "pricing"))
+        
+    search_results = await asyncio.gather(*search_tasks)
+    
+    # Group results by category
+    category_contexts = {
+        "reliability": "Web Search Reliability & Outage Info:\n",
+        "security": "Web Search Security & Data Leak Info:\n",
+        "pricing": "Web Search Pricing and Cost Information:\n"
+    }
+    
+    for res_type, category, info in search_results:
+        category_contexts[category] += f"- Resource Type '{res_type}': {info}\n"
+        
+    # Inject contexts into enriched_payload for each agent
+    enriched_payload["web_search_reliability"] = category_contexts["reliability"]
+    enriched_payload["web_search_security"] = category_contexts["security"]
+    enriched_payload["web_search_pricing"] = category_contexts["pricing"]
     
     base_instructions = "You are a machine API. You must respond ONLY with valid, minified JSON. No markdown, no backticks, no conversational text."
 
     prompts = {
-        "Reliability": f"You are a Cloud Reliability Engineer analyzing a failure event. Return a JSON object with: 'downtime_estimate_minutes' (int), 'critical_spofs' (list of strings), 'cascading_impact_summary' (a detailed 2-3 sentence paragraph explaining exactly how this failure spreads to downstream components), and 'mitigation_steps' (list of 3 actionable steps to restore service). {base_instructions}",
+        "Reliability": f"You are a Cloud Reliability Engineer analyzing a failure event. Utilize the latest web search reliability/outage information to inform your downtime and mitigation estimates. Return a JSON object with: 'downtime_estimate_minutes' (int), 'critical_spofs' (list of strings), 'cascading_impact_summary' (a detailed 2-3 sentence paragraph explaining exactly how this failure spreads to downstream components), and 'mitigation_steps' (list of 3 actionable steps to restore service). {base_instructions}",
         
-        "Security": f"You are a Cloud Security Engineer. Analyze the raw_hcl of the affected resources for IAM/SG misconfigurations or exposure risks. Return a JSON object with: 'exposure_risk_level' (Low/Medium/High/Critical), 'iam_sg_warnings' (list of strings), 'attack_vectors' (a detailed 2-3 sentence paragraph describing how a malicious actor could exploit this topology), and 'compliance_violations' (list of potential SOC2/PCI violations). {base_instructions}",
+        "Security": f"You are a Cloud Security Engineer. Analyze the raw_hcl of the affected resources for IAM/SG misconfigurations or exposure risks. Leverage the latest web search security, vulnerability, and data leak info to identify realistic exposure risks. Return a JSON object with: 'exposure_risk_level' (Low/Medium/High/Critical), 'iam_sg_warnings' (list of strings), 'attack_vectors' (a detailed 2-3 sentence paragraph describing how a malicious actor could exploit this topology), and 'compliance_violations' (list of potential SOC2/PCI violations). {base_instructions}",
         
-        "Cost": f"You are a Cloud FinOps Engineer. Analyze the affected resource types. Return a JSON object with: 'orphaned_resource_cost_estimate' (int), 'financial_impact_summary' (detailed 2-3 sentence explanation of the blast radius cost, including SLA penalties or hidden data transfer costs), and 'hourly_burn_rate' (estimated waste per hour in dollars). {base_instructions}"
+        "Cost": f"You are a Cloud FinOps Engineer. Analyze the affected resource types and use the provided web search pricing details for the latest rates/costs. Return a JSON object with: 'orphaned_resource_cost_estimate' (int), 'financial_impact_summary' (detailed 2-3 sentence explanation of the blast radius cost, including SLA penalties or hidden data transfer costs), and 'hourly_burn_rate' (estimated waste per hour in dollars). {base_instructions}"
     }
 
     tasks = [
