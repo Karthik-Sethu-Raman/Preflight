@@ -75,6 +75,9 @@ export default function App() {
 
   const [simulationStarted, setSimulationStarted] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  
+  const [affectedNodesList, setAffectedNodesList] = useState([]);
+  const [currentAffectedIndex, setCurrentAffectedIndex] = useState(-1);
 
   const graphRef = useRef();
   const fileInputRef = useRef(null);
@@ -157,9 +160,11 @@ export default function App() {
       .catch(err => console.error('Failed to fetch graph:', err));
   }, []);
 
-  const focusNode = useCallback(node => {
+  const focusNode = useCallback((node, keepSimulation = false) => {
     setSelectedNode(node.id);
-    setSimulationStarted(false);
+    if (!keepSimulation) {
+      setSimulationStarted(false);
+    }
 
     if (graphRef.current) {
       const distance = 50;
@@ -205,6 +210,13 @@ export default function App() {
           return next;
         });
         setAgentsData(data.agents);
+        
+        const sortedAffected = Object.keys(affected)
+          .filter(id => id !== selectedNode)
+          .sort((a, b) => affected[a].depth - affected[b].depth || a.localeCompare(b));
+        setAffectedNodesList(sortedAffected);
+        setCurrentAffectedIndex(-1);
+
       }, (maxDepth * 600) + 600);
 
     } catch (err) {
@@ -218,6 +230,19 @@ export default function App() {
     setSelectedNode(null);
     setSimulationStarted(false);
     setSearchQuery('');
+    setAffectedNodesList([]);
+    setCurrentAffectedIndex(-1);
+  };
+
+  const handleNextAffected = () => {
+    if (affectedNodesList.length === 0) return;
+    const nextIndex = (currentAffectedIndex + 1) % affectedNodesList.length;
+    setCurrentAffectedIndex(nextIndex);
+    const nextNodeId = affectedNodesList[nextIndex];
+    const node = graphData.nodes.find(n => n.id === nextNodeId);
+    if (node) {
+      focusNode(node, true);
+    }
   };
 
   const drawNode = useCallback((node) => {
@@ -448,6 +473,23 @@ export default function App() {
               Reset
             </button>
           </div>
+
+          {affectedNodesList.length > 0 && (
+            <div style={{ marginTop: '4px' }}>
+              <button 
+                onClick={handleNextAffected} 
+                style={{ 
+                  ...styles.button, 
+                  width: '100%', 
+                  backgroundColor: 'rgba(224, 145, 63, 0.15)', 
+                  border: `1px solid rgba(224, 145, 63, 0.4)`, 
+                  color: COLORS.warn 
+                }}
+              >
+                Next Affected Node {currentAffectedIndex !== -1 ? `(${currentAffectedIndex + 1}/${affectedNodesList.length})` : ''} &rarr;
+              </button>
+            </div>
+          )}
 
           <div style={styles.divider} />
 
