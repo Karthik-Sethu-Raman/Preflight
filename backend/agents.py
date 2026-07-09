@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 load_dotenv()
 # pyrefly: ignore [missing-import]
@@ -56,7 +57,7 @@ async def analyze_scenario(enriched_payload):
         
         "Cost": f"You are a Cloud FinOps Engineer. Analyze the affected resource types. Return a JSON object with: 'orphaned_resource_cost_estimate' (int), 'financial_impact_summary' (detailed 2-3 sentence explanation of the blast radius cost, including SLA penalties or hidden data transfer costs), and 'hourly_burn_rate' (estimated waste per hour in dollars). {base_instructions}",
         
-        "Remediation": f"You are a Cloud Infrastructure Architect. Analyze the raw_hcl of the affected resources and the failure event. Propose a concrete Terraform patch to prevent this blast radius from happening again (e.g. adding Multi-AZ, an Auto Scaling Group, or IAM constraints). Return a JSON object with: 'explanation' (a 2 sentence summary of the fix), and 'terraform_patch' (a string containing the raw HCL code block for the new/modified resources). {base_instructions}"
+        "Remediation": f"You are a Cloud Infrastructure Architect. Analyze the raw_hcl of the affected resources and the failure event. Propose a concrete Terraform patch to prevent this blast radius from happening again (e.g. adding Multi-AZ, an Auto Scaling Group, or IAM constraints). Return a JSON object with: 'explanation' (a 2 sentence summary of the fix), and 'terraform_patch' (a string containing the raw HCL code block for the new/modified resources. CRITICAL: Ensure the HCL is perfectly valid, use underscores for resource types like 'aws_subnet', and include proper indentation). {base_instructions}"
     }
 
     tasks = [

@@ -578,10 +578,18 @@ export default function App() {
                   <div style={styles.cardBody}>
                     <p style={styles.insightText}>{agentsData.Remediation?.explanation}</p>
                     {agentsData.Remediation?.terraform_patch && (
-                      <div style={{ marginTop: '10px', backgroundColor: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', overflowX: 'auto', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <pre style={{ margin: 0, color: COLORS.text, fontSize: '11px', fontFamily: "'JetBrains Mono', monospace" }}>
-                          <code>{agentsData.Remediation.terraform_patch}</code>
-                        </pre>
+                      <div style={{ marginTop: '14px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                        <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '6px 12px', fontSize: '10px', color: COLORS.textMuted, borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{width: '8px', height: '8px', borderRadius: '50%', backgroundColor: COLORS.danger}}></span>
+                          <span style={{width: '8px', height: '8px', borderRadius: '50%', backgroundColor: COLORS.warn}}></span>
+                          <span style={{width: '8px', height: '8px', borderRadius: '50%', backgroundColor: COLORS.safe}}></span>
+                          <span style={{marginLeft: '4px', fontFamily: "'JetBrains Mono', monospace"}}>main.tf patch</span>
+                        </div>
+                        <div style={{ backgroundColor: 'rgba(0,0,0,0.4)', padding: '12px', overflowX: 'auto', maxHeight: '300px' }}>
+                          <pre style={{ margin: 0, color: '#A6ACCD', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", lineHeight: '1.4' }}>
+                            <code>{agentsData.Remediation.terraform_patch}</code>
+                          </pre>
+                        </div>
                       </div>
                     )}
                   </div>
