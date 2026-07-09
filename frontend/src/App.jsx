@@ -4,6 +4,13 @@ import SpriteText from 'three-spritetext';
 import * as THREE from 'three';
 
 /* ---------------------------------------------------------------- */
+/*  Backend API base                                                 */
+/*  Set VITE_API_URL in an .env file to point at a deployed backend. */
+/*  Falls back to the local FastAPI dev server on port 8000.         */
+/* ---------------------------------------------------------------- */
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+
+/* ---------------------------------------------------------------- */
 /*  Design tokens                                                    */
 /* ---------------------------------------------------------------- */
 const COLORS = {
@@ -94,12 +101,20 @@ export default function App() {
     const formData = new FormData();
     formData.append('file', file);
 
-    fetch('http://localhost:8000/api/upload', {
+    fetch(`${API_BASE}/api/upload`, {
       method: 'POST',
       body: formData,
     })
-      .then(res => {
-        if (!res.ok) throw new Error('Backend validation failed.');
+      .then(async res => {
+        if (!res.ok) {
+          // Surface the backend's real reason instead of always blaming syntax.
+          let detail = `Backend responded with ${res.status}.`;
+          try {
+            const body = await res.json();
+            if (body && body.detail) detail = body.detail;
+          } catch { /* non-JSON error body */ }
+          throw new Error(detail);
+        }
         return res.json();
       })
       .then(data => {
@@ -108,8 +123,14 @@ export default function App() {
         setIsUploading(false);
       })
       .catch(err => {
-        console.error('Upload failed:', err);
-        alert('Upload failed. Ensure the Terraform syntax is valid and try again.');
+        console.error('[v0] Upload failed:', err);
+        // TypeError from fetch means the backend URL was never reached.
+        const unreachable = err instanceof TypeError;
+        alert(
+          unreachable
+            ? `Could not reach the backend at ${API_BASE}.\n\nMake sure the Python API is running (uvicorn main:app --port 8000) and, if you are viewing a hosted preview, set VITE_API_URL to your backend's public URL.`
+            : `Upload failed: ${err.message}`
+        );
         setIsUploading(false);
       });
   };
@@ -123,7 +144,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/graph')
+    fetch(`${API_BASE}/api/graph`)
       .then(res => res.json())
       .then(data => {
         setGraphData(data);
@@ -156,7 +177,7 @@ export default function App() {
     if (!selectedNode) return;
     setSimulationStarted(true);
     try {
-      const res = await fetch('http://localhost:8000/api/simulate', {
+      const res = await fetch(`${API_BASE}/api/simulate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ node_id: selectedNode, failure_type: failureType })
