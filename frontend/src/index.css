@@ -43,7 +43,15 @@ html, body {
 
 button {
   font-family: inherit;
+  transition: transform 0.1s ease, filter 0.2s ease !important;
 }
 button:not(:disabled) {
   cursor: pointer;
+}
+button:not(:disabled):hover {
+  filter: brightness(1.15);
+}
+button:not(:disabled):active {
+  transform: scale(0.97) translateY(1px) !important;
+  filter: brightness(0.9);
 }
