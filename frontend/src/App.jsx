@@ -567,6 +567,27 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Remediation */}
+              <div style={styles.card}>
+                <div style={{ ...styles.accentBar, backgroundColor: COLORS.safe }} />
+                <div style={styles.cardInner}>
+                  <div style={styles.cardHeader}>
+                    <span style={{ ...styles.headerDot, backgroundColor: COLORS.safe }} />
+                    Auto-Remediation
+                  </div>
+                  <div style={styles.cardBody}>
+                    <p style={styles.insightText}>{agentsData.Remediation?.explanation}</p>
+                    {agentsData.Remediation?.terraform_patch && (
+                      <div style={{ marginTop: '10px', backgroundColor: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', overflowX: 'auto', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <pre style={{ margin: 0, color: COLORS.text, fontSize: '11px', fontFamily: "'JetBrains Mono', monospace" }}>
+                          <code>{agentsData.Remediation.terraform_patch}</code>
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
             </div>
           )}
         </div>
