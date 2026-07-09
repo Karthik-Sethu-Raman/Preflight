@@ -986,4 +986,17 @@ const styles = {
     WebkitBackdropFilter: 'blur(20px)',
     transition: 'background-color 0.2s ease',
   },
+  uploadButton: {
+    width: '100%',
+    padding: '10px',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    border: '1px dashed rgba(255, 255, 255, 0.2)',
+    color: COLORS.textMuted,
+    borderRadius: '9px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontFamily: "'JetBrains Mono', monospace",
+    marginTop: '10px',
+    transition: 'border-color 0.2s ease',
+  }
 };

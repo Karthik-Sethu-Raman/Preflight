@@ -47,7 +47,8 @@ async def run_agent(agent_name, system_prompt, enriched_payload):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Analyze this failure event:\n{user_content}"}
             ],
-            temperature=0.1, 
+            temperature=0.0,
+            seed=42,
         )
         raw_text = response.choices[0].message.content
         return agent_name, extract_clean_json(raw_text)
