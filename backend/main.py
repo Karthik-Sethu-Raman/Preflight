@@ -63,6 +63,11 @@ def init_graph():
 # Initialize graph on startup
 init_graph()
 
+@app.get("/")
+def read_root():
+    """Root route to verify the API is running."""
+    return {"message": "Preflight API is live!", "status": "ok"}
+
 @app.get("/api/graph")
 def get_graph():
     """Returns the current infrastructure topography from cache."""
