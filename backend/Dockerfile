@@ -19,6 +19,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source code and override.tf
 COPY *.py .
 COPY override.tf .
+COPY main.tf .
+
+# Pre-download Terraform plugins to cache them in the image
+RUN terraform init
 
 # Expose the port Uvicorn runs on
 EXPOSE 8000
