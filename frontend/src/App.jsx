@@ -74,7 +74,10 @@ export default function App() {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const [simulationStarted, setSimulationStarted] = useState(false);
-  const [isSimulationRunning, setIsSimulationRunning] = useState(false);
+  const simulationStartedRef = useRef(false);
+  useEffect(() => {
+    simulationStartedRef.current = simulationStarted;
+  }, [simulationStarted]);
   const [isUploading, setIsUploading] = useState(false);
   
   const [affectedNodesList, setAffectedNodesList] = useState([]);
@@ -147,23 +150,12 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    fetch(`${API_BASE}/api/graph`)
-      .then(res => res.json())
-      .then(data => {
-        setGraphData(data);
-        setTimeout(() => {
-          if (graphRef.current) {
-            graphRef.current.cameraPosition({ z: 300 }, { x: 0, y: 0, z: 0 }, 1500);
-          }
-        }, 200);
-      })
-      .catch(err => console.error('Failed to fetch graph:', err));
-  }, []);
+
 
   const focusNode = useCallback((node, keepSimulation = false) => {
-    // Block node selection while a simulation is active
-    if (isSimulationRunning && !keepSimulation) return;
+    // Block node selection changes while a simulation is active
+    if (simulationStartedRef.current && !keepSimulation) return;
+
     setSelectedNode(node.id);
     if (!keepSimulation) {
       setSimulationStarted(false);
@@ -179,12 +171,11 @@ export default function App() {
         2000
       );
     }
-  }, [isSimulationRunning]);
+  }, [simulationStarted]);
 
   const simulateFailure = async () => {
     if (!selectedNode) return;
     setSimulationStarted(true);
-    setIsSimulationRunning(true);
     try {
       const res = await fetch(`${API_BASE}/api/simulate`, {
         method: 'POST',
@@ -233,7 +224,6 @@ export default function App() {
     setAgentsData(null);
     setSelectedNode(null);
     setSimulationStarted(false);
-    setIsSimulationRunning(false);
     setSearchQuery('');
     setAffectedNodesList([]);
     setCurrentAffectedIndex(-1);
@@ -328,7 +318,7 @@ export default function App() {
           linkDirectionalArrowRelPos={1}
           linkColor={() => 'rgba(255, 255, 255, 0.14)'}
           linkWidth={0.6}
-          onNodeClick={focusNode}
+          onNodeClick={(node) => focusNode(node)}
           backgroundColor="rgba(0,0,0,0)"
           showNavInfo={false}
         />
@@ -463,7 +453,7 @@ export default function App() {
           </div>
 
           <div style={styles.buttonGroup}>
-            {isSimulationRunning ? (
+            {simulationStarted ? (
               <button
                 onClick={handleReset}
                 style={{
