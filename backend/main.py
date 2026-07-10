@@ -76,7 +76,7 @@ def get_graph():
     return CURRENT_GRAPH["data"]
 
 @app.post("/api/upload")
-async def upload_tf(file: UploadFile = File(...)):
+def upload_tf(file: UploadFile = File(...)):
     """Accepts a new .tf file, saves it, and regenerates the graph from existing plan.json."""
     global CURRENT_TF_FILE, CURRENT_GRAPH
     
@@ -89,9 +89,9 @@ async def upload_tf(file: UploadFile = File(...)):
     # 2. Run Terraform subprocess calls to regenerate plan.json dynamically
     try:
         # Initialize
-        subprocess.run(["terraform", "init"], check=True, capture_output=True, cwd=".", text=True)
+        subprocess.run(["terraform", "init", "-input=false"], check=True, capture_output=True, cwd=".", text=True)
         # Plan
-        subprocess.run(["terraform", "plan", "-out=tfplan"], check=True, capture_output=True, cwd=".", text=True)
+        subprocess.run(["terraform", "plan", "-out=tfplan", "-input=false"], check=True, capture_output=True, cwd=".", text=True)
         # Show as JSON
         result = subprocess.run(["terraform", "show", "-json", "tfplan"], check=True, capture_output=True, cwd=".", text=True)
         
