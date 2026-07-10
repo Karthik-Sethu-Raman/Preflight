@@ -4,10 +4,10 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y wget unzip && rm -rf /var/lib/apt/lists/*
 
 # Install Terraform CLI
-RUN wget https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip \
-    && unzip terraform_1.5.7_linux_amd64.zip \
+RUN wget https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_amd64.zip \
+    && unzip terraform_1.8.5_linux_amd64.zip \
     && mv terraform /usr/local/bin/ \
-    && rm terraform_1.5.7_linux_amd64.zip
+    && rm terraform_1.8.5_linux_amd64.zip
 
 # Set working directory
 WORKDIR /app
@@ -17,8 +17,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code and override.tf
-COPY *.py .
-COPY override.tf .
+COPY *.py ./
+COPY override.tf ./
+COPY plan.json ./
+COPY main.tf ./
 
 # Pre-download Terraform plugins to cache them in the image
 RUN terraform init
