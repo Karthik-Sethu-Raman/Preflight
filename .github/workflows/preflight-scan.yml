@@ -1,0 +1,38 @@
+name: Preflight AI Risk Scan
+
+on:
+  pull_request:
+    paths:
+      - '**/*.tf'
+
+jobs:
+  preflight-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run Preflight Bot
+        env:
+          PREFLIGHT_API_URL: ${{ secrets.PREFLIGHT_API_URL || 'http://localhost:8000' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          python .github/scripts/preflight_bot.py
