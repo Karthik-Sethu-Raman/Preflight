@@ -45,6 +45,29 @@ async def run_agent(agent_name, system_prompt, enriched_payload):
         
         return agent_name, {"error": "API Call Failed", "details": str(e)}
 
+async def analyze_pr_code(tf_code: str) -> str:
+    """Uses the AI model to perform a code review on a Terraform file and returns a Markdown report."""
+    system_prompt = (
+        "You are a Principal Cloud Infrastructure Architect doing a code review. "
+        "Analyze the provided Terraform code and return a detailed, beautifully formatted Markdown report. "
+        "Focus on: 1. Potential Misconfigurations 2. Security Risks 3. Blast Radius / High-Impact Changes. "
+        "Keep it concise, actionable, and use Markdown headers, bullet points, and code blocks."
+    )
+    try:
+        response = await client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Please review this Terraform code:\n\n```hcl\n{tf_code}\n```"}
+            ],
+            temperature=0.1,
+            seed=42,
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"[Analyze PR] Error: {e}")
+        return f"**Error performing AI analysis:** {str(e)}"
+
 async def analyze_scenario(enriched_payload):
     """Fires all 4 agents concurrently with the FULL raw_hcl context."""
     

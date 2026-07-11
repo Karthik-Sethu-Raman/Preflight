@@ -37,3 +37,33 @@ Preflight AI is a cloud infrastructure risk engine that analyzes Terraform deplo
 - **Frontend:** React + Vite, react-force-graph-2d
 - **AI:** Fireworks AI API (Qwen2.5-7B-Instruct)
 - **Deployment:** Docker + docker-compose
+
+## Third-Party GitHub Action
+
+You can add Preflight AI directly to your own repositories to get automatic Terraform code reviews on your Pull Requests!
+
+Just create a file at `.github/workflows/preflight.yml` in your repository:
+
+```yaml
+name: "Preflight AI Review"
+on:
+  pull_request:
+    paths:
+      - '**/*.tf'
+
+jobs:
+  preflight-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      
+      - name: Run Preflight AI
+        uses: Karthik-Sethu-Raman/Preflight@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Preflight will automatically analyze your changed `.tf` files and post a beautiful Markdown report with potential misconfigurations and security risks directly to your PR!

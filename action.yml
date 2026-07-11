@@ -1,0 +1,75 @@
+name: "Preflight AI Review"
+description: "Automatically perform AI code reviews on changed Terraform files in Pull Requests."
+branding:
+  icon: "shield"
+  color: "blue"
+inputs:
+  github_token:
+    description: "GitHub Token to post comments on the PR"
+    required: true
+  api_url:
+    description: "URL of the Preflight API backend"
+    required: false
+    default: "http://3.6.86.201:8000"
+runs:
+  using: "composite"
+  steps:
+    - name: Get Changed Files
+      id: changed-files
+      shell: bash
+      run: |
+        # Get list of changed .tf files in the PR
+        git fetch origin ${{ github.base_ref }} --depth=1
+        CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }} HEAD | grep '\.tf$' || true)
+        
+        if [ -z "$CHANGED_FILES" ]; then
+          echo "No .tf files changed. Skipping Preflight analysis."
+          echo "has_tf=false" >> $GITHUB_OUTPUT
+        else
+          echo "Found changed .tf files:"
+          echo "$CHANGED_FILES"
+          echo "has_tf=true" >> $GITHUB_OUTPUT
+          
+          # Just take the first .tf file for simplicity in this demo action, 
+          # or we could loop. We'll pick the first one.
+          FIRST_TF=$(echo "$CHANGED_FILES" | head -n 1)
+          echo "tf_file=$FIRST_TF" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Analyze with Preflight AI
+      if: steps.changed-files.outputs.has_tf == 'true'
+      id: analyze
+      shell: bash
+      run: |
+        echo "Sending ${{ steps.changed-files.outputs.tf_file }} to Preflight API..."
+        
+        # Use curl to upload the file to our backend
+        RESPONSE=$(curl -s -X POST -F "file=@${{ steps.changed-files.outputs.tf_file }}" \
+          "${{ inputs.api_url }}/api/github/analyze-pr")
+          
+        # Extract the markdown_report from the JSON response using jq
+        REPORT=$(echo "$RESPONSE" | jq -r '.markdown_report')
+        
+        if [ "$REPORT" == "null" ] || [ -z "$REPORT" ]; then
+          echo "Failed to get a valid response from the API."
+          echo "Response was: $RESPONSE"
+          exit 1
+        fi
+        
+        # Write report to a temp file to handle multiline safely
+        echo "$REPORT" > preflight_report.md
+        
+    - name: Post PR Comment
+      if: steps.changed-files.outputs.has_tf == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+      run: |
+        echo "Posting review to Pull Request..."
+        
+        # Prefix the comment
+        echo "## 🛡️ Preflight AI Review" > final_comment.md
+        cat preflight_report.md >> final_comment.md
+        
+        # Use GitHub CLI to post the comment
+        gh pr comment ${{ github.event.pull_request.number }} -F final_comment.md

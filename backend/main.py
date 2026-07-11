@@ -112,6 +112,20 @@ def upload_tf(file: UploadFile = File(...)):
     # 3. Return the completely new, dynamically generated graph
     return CURRENT_GRAPH["data"]
 
+@app.post("/api/github/analyze-pr")
+async def analyze_pr_endpoint(file: UploadFile = File(...)):
+    """Receives a Terraform file from GitHub Actions and returns an AI Markdown review."""
+    from agents import analyze_pr_code
+    try:
+        content = await file.read()
+        tf_code = content.decode("utf-8")
+        markdown_report = await analyze_pr_code(tf_code)
+        return {"markdown_report": markdown_report}
+    except Exception as e:
+        print(f"Error during PR analysis: {e}")
+        raise HTTPException(status_code=500, detail="Failed to analyze PR code.")
+
+
 @app.post("/api/simulate")
 async def simulate(req: SimulateRequest):
     """Executes the deterministic BFS propagation and dispatches the AI agents."""
