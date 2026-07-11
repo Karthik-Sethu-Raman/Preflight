@@ -89,7 +89,7 @@ def upload_tf(file: UploadFile = File(...)):
     # 2. Run Terraform subprocess calls to regenerate plan.json dynamically
     try:
         # Initialize
-        subprocess.run(["terraform", "init", "-input=false"], check=True, capture_output=True, cwd=".", text=True)
+        subprocess.run(["terraform", "init", "-upgrade", "-input=false"], check=True, capture_output=True, cwd=".", text=True)
         # Plan
         subprocess.run(["terraform", "plan", "-out=tfplan", "-input=false"], check=True, capture_output=True, cwd=".", text=True)
         # Show as JSON
