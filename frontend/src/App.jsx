@@ -74,6 +74,10 @@ export default function App() {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const [simulationStarted, setSimulationStarted] = useState(false);
+  const simulationStartedRef = useRef(false);
+  useEffect(() => {
+    simulationStartedRef.current = simulationStarted;
+  }, [simulationStarted]);
   const [isUploading, setIsUploading] = useState(false);
   
   const [affectedNodesList, setAffectedNodesList] = useState([]);
@@ -146,21 +150,12 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    fetch(`${API_BASE}/api/graph`)
-      .then(res => res.json())
-      .then(data => {
-        setGraphData(data);
-        setTimeout(() => {
-          if (graphRef.current) {
-            graphRef.current.cameraPosition({ z: 300 }, { x: 0, y: 0, z: 0 }, 1500);
-          }
-        }, 200);
-      })
-      .catch(err => console.error('Failed to fetch graph:', err));
-  }, []);
+
 
   const focusNode = useCallback((node, keepSimulation = false) => {
+    // Block node selection changes while a simulation is active
+    if (simulationStartedRef.current && !keepSimulation) return;
+
     setSelectedNode(node.id);
     if (!keepSimulation) {
       setSimulationStarted(false);
@@ -176,7 +171,7 @@ export default function App() {
         2000
       );
     }
-  }, []);
+  }, [simulationStarted]);
 
   const simulateFailure = async () => {
     if (!selectedNode) return;
@@ -323,7 +318,7 @@ export default function App() {
           linkDirectionalArrowRelPos={1}
           linkColor={() => 'rgba(255, 255, 255, 0.14)'}
           linkWidth={0.6}
-          onNodeClick={focusNode}
+          onNodeClick={(node) => focusNode(node)}
           backgroundColor="rgba(0,0,0,0)"
           showNavInfo={false}
         />
@@ -458,17 +453,30 @@ export default function App() {
           </div>
 
           <div style={styles.buttonGroup}>
-            <button
-              onClick={simulateFailure}
-              disabled={!selectedNode}
-              style={{
-                ...styles.button,
-                opacity: selectedNode ? 1 : 0.45,
-                cursor: selectedNode ? 'pointer' : 'not-allowed',
-              }}
-            >
-              Run simulation
-            </button>
+            {simulationStarted ? (
+              <button
+                onClick={handleReset}
+                style={{
+                  ...styles.button,
+                  backgroundColor: COLORS.danger,
+                  cursor: 'pointer',
+                }}
+              >
+                Stop simulation
+              </button>
+            ) : (
+              <button
+                onClick={simulateFailure}
+                disabled={!selectedNode}
+                style={{
+                  ...styles.button,
+                  opacity: selectedNode ? 1 : 0.45,
+                  cursor: selectedNode ? 'pointer' : 'not-allowed',
+                }}
+              >
+                Run simulation
+              </button>
+            )}
             <button onClick={handleReset} style={styles.resetButton}>
               Reset
             </button>

@@ -60,8 +60,7 @@ def init_graph():
         CURRENT_GRAPH["data"] = data
         CURRENT_GRAPH["nx_graph"] = nx_graph
 
-# Initialize graph on startup
-init_graph()
+# No longer auto-loading graph on startup — users must upload a .tf file first.
 
 @app.get("/")
 def read_root():
@@ -72,7 +71,7 @@ def read_root():
 def get_graph():
     """Returns the current infrastructure topography from cache."""
     if not CURRENT_GRAPH["data"]:
-        init_graph()
+        return {"nodes": [], "links": []}
     return CURRENT_GRAPH["data"]
 
 @app.post("/api/upload")
