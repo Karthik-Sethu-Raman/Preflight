@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://preflight-api.duckdns.org/api/:path*"
+      "destination": "http://3.6.86.201:8000/api/:path*"
     }
   ]
 }
