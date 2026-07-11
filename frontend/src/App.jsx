@@ -8,7 +8,7 @@ import * as THREE from 'three';
 /*  Set VITE_API_URL in an .env file to point at a deployed backend. */
 /*  Falls back to the local FastAPI dev server on port 8000.         */
 /* ---------------------------------------------------------------- */
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const API_BASE = import.meta.env.DEV ? 'http://localhost:8000' : '';
 
 /* ---------------------------------------------------------------- */
 /*  Design tokens                                                    */
