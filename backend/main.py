@@ -132,26 +132,40 @@ async def analyze_pr_endpoint(file: UploadFile = File(...)):
     from engine import build_graph_from_plan, enrich_graph_with_hcl
     from blast_radius import run_chaos_simulations
     
+    import tempfile
+    import os
+    import shutil
     try:
         content = await file.read()
         tf_code = content.decode("utf-8")
         
-        # 1. Save PR file
-        with open("pr_main.tf", "w", encoding="utf-8") as f:
-            f.write(tf_code)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Write a default provider so we don't fail on missing region
+            with open(os.path.join(temp_dir, "provider.tf"), "w", encoding="utf-8") as f:
+                f.write('provider "aws" { region = "us-west-2" }\n')
+                
+            # Write PR file
+            pr_file_path = os.path.join(temp_dir, "pr_main.tf")
+            with open(pr_file_path, "w", encoding="utf-8") as f:
+                f.write(tf_code)
+                
+            try:
+                # 2. Run Terraform to get plan
+                subprocess.run(["terraform", "init", "-backend=false", "-input=false"], check=True, capture_output=True, cwd=temp_dir, text=True)
+                subprocess.run(["terraform", "plan", "-out=pr_tfplan", "-input=false"], check=True, capture_output=True, cwd=temp_dir, text=True)
+                result = subprocess.run(["terraform", "show", "-json", "pr_tfplan"], check=True, capture_output=True, cwd=temp_dir, text=True)
+            except subprocess.CalledProcessError as e:
+                print(f"Terraform error during PR analysis: stdout={e.stdout}, stderr={e.stderr}")
+                raise HTTPException(status_code=400, detail=f"Terraform validation failed: {e.stderr}")
+                
+            plan_path = os.path.join(temp_dir, "pr_plan.json")
+            with open(plan_path, "w", encoding="utf-8") as f:
+                f.write(result.stdout)
+                
+            # 3. Build graph
+            G = build_graph_from_plan(plan_path)
+            G = enrich_graph_with_hcl(G, pr_file_path)
             
-        # 2. Run Terraform to get plan
-        subprocess.run(["terraform", "init", "-upgrade", "-input=false"], check=True, capture_output=True, cwd=".", text=True)
-        subprocess.run(["terraform", "plan", "-out=pr_tfplan", "-input=false"], check=True, capture_output=True, cwd=".", text=True)
-        result = subprocess.run(["terraform", "show", "-json", "pr_tfplan"], check=True, capture_output=True, cwd=".", text=True)
-        
-        with open("pr_plan.json", "w", encoding="utf-8") as f:
-            f.write(result.stdout)
-            
-        # 3. Build graph
-        G = build_graph_from_plan("pr_plan.json")
-        G = enrich_graph_with_hcl(G, "pr_main.tf")
-        
         # 4. Chaos Simulations
         chaos_results = run_chaos_simulations(G, num_simulations=50)
         top_scenarios = chaos_results[:3]
@@ -169,6 +183,8 @@ async def analyze_pr_endpoint(file: UploadFile = File(...)):
         )
         
         return {"markdown_report": markdown_report}
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error during PR analysis: {e}")
         raise HTTPException(status_code=500, detail="Failed to analyze PR code.")
