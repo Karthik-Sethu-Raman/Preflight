@@ -75,6 +75,7 @@ export default function App() {
 
   const [simulationStarted, setSimulationStarted] = useState(false);
   const simulationStartedRef = useRef(false);
+  const [isSimulating, setIsSimulating] = useState(false);
   useEffect(() => {
     simulationStartedRef.current = simulationStarted;
   }, [simulationStarted]);
@@ -100,7 +101,7 @@ export default function App() {
     }
   };
 
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -176,6 +177,7 @@ export default function App() {
   const simulateFailure = async () => {
     if (!selectedNode) return;
     setSimulationStarted(true);
+    setIsSimulating(true);
     try {
       const res = await fetch(`${API_BASE}/api/simulate`, {
         method: 'POST',
@@ -211,11 +213,13 @@ export default function App() {
           .sort((a, b) => affected[a].depth - affected[b].depth || a.localeCompare(b));
         setAffectedNodesList(sortedAffected);
         setCurrentAffectedIndex(-1);
+        setIsSimulating(false);
 
       }, (maxDepth * 600) + 600);
 
     } catch (err) {
       console.error('Simulation failed:', err);
+      setIsSimulating(false);
     }
   };
 
@@ -224,6 +228,7 @@ export default function App() {
     setAgentsData(null);
     setSelectedNode(null);
     setSimulationStarted(false);
+    setIsSimulating(false);
     setSearchQuery('');
     setAffectedNodesList([]);
     setCurrentAffectedIndex(-1);
@@ -316,8 +321,8 @@ export default function App() {
           d3ForceArgs={[-400]}
           linkDirectionalArrowLength={3}
           linkDirectionalArrowRelPos={1}
-          linkColor={() => 'rgba(255, 255, 255, 0.14)'}
-          linkWidth={0.6}
+          linkColor={() => 'rgba(255, 255, 255, 0.7)'}
+          linkWidth={1.5}
           onNodeClick={(node) => focusNode(node)}
           backgroundColor="rgba(0,0,0,0)"
           showNavInfo={false}
@@ -373,7 +378,6 @@ export default function App() {
 
           <div style={styles.header}>
             <h1 style={styles.title}>Preflight</h1>
-            <span style={styles.badge}>AI</span>
           </div>
           <p style={styles.subtitle}>Infrastructure Risk Engine</p>
 
@@ -388,7 +392,7 @@ export default function App() {
             style={styles.uploadButton}
             onClick={() => fileInputRef.current?.click()}
           >
-            {isUploading ? 'Uploading…' : 'Upload Terraform (.tf)'}
+            {isUploading ? 'Uploading…' : (graphData && graphData.nodes && graphData.nodes.length > 0 ? 'File uploaded' : 'Upload Terraform (.tf)')}
           </button>
 
           <div style={styles.divider} />
@@ -454,16 +458,25 @@ export default function App() {
 
           <div style={styles.buttonGroup}>
             {simulationStarted ? (
-              <button
-                onClick={handleReset}
-                style={{
-                  ...styles.button,
-                  backgroundColor: COLORS.danger,
-                  cursor: 'pointer',
-                }}
-              >
-                Stop simulation
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  onClick={handleReset}
+                  style={{
+                    ...styles.button,
+                    backgroundColor: COLORS.danger,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Stop simulation
+                </button>
+                {isSimulating && (
+                  <div className="loader">
+                    <div className="bar1"></div><div className="bar2"></div><div className="bar3"></div><div className="bar4"></div>
+                    <div className="bar5"></div><div className="bar6"></div><div className="bar7"></div><div className="bar8"></div>
+                    <div className="bar9"></div><div className="bar10"></div><div className="bar11"></div><div className="bar12"></div>
+                  </div>
+                )}
+              </div>
             ) : (
               <button
                 onClick={simulateFailure}

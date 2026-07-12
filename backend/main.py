@@ -87,12 +87,23 @@ def upload_tf(file: UploadFile = File(...)):
     
     # 2. Run Terraform subprocess calls to regenerate plan.json dynamically
     try:
-        # Initialize
-        subprocess.run(["terraform", "init", "-upgrade", "-input=false"], check=True, capture_output=True, cwd=".", text=True)
-        # Plan
-        subprocess.run(["terraform", "plan", "-out=tfplan", "-input=false"], check=True, capture_output=True, cwd=".", text=True)
+        # Set dummy AWS credentials to completely bypass slow AWS credential discovery timeouts
+        import os
+        env = os.environ.copy()
+        env["AWS_ACCESS_KEY_ID"] = "dummy"
+        env["AWS_SECRET_ACCESS_KEY"] = "dummy"
+        env["AWS_DEFAULT_REGION"] = "us-east-1"
+        env["AWS_SESSION_TOKEN"] = "dummy"
+
+        # Try planning first to skip the slow init step if providers are already cached
+        try:
+            subprocess.run(["terraform", "plan", "-out=tfplan", "-input=false", "-refresh=false"], check=True, capture_output=True, cwd=".", text=True, env=env)
+        except subprocess.CalledProcessError:
+            # If plan fails, we likely need to initialize new providers
+            subprocess.run(["terraform", "init", "-input=false"], check=True, capture_output=True, cwd=".", text=True, env=env)
+            subprocess.run(["terraform", "plan", "-out=tfplan", "-input=false", "-refresh=false"], check=True, capture_output=True, cwd=".", text=True, env=env)
         # Show as JSON
-        result = subprocess.run(["terraform", "show", "-json", "tfplan"], check=True, capture_output=True, cwd=".", text=True)
+        result = subprocess.run(["terraform", "show", "-json", "tfplan"], check=True, capture_output=True, cwd=".", text=True, env=env)
         
         # Overwrite plan.json
         with open("plan.json", "w", encoding="utf-8") as f:
