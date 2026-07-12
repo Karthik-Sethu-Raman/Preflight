@@ -1,4 +1,4 @@
-# 🚀 Preflight AI
+# Preflight AI
 
 **A Dual-Model, AI-Powered Infrastructure Risk & Chaos Engine.**
 
