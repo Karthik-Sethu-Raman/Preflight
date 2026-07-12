@@ -436,7 +436,6 @@ export default function App() {
           {/* Chaos Lab Panel */}
           <div style={styles.chaosPanel}>
             <div style={styles.chaosHeader}>
-              <span style={{ fontSize: '18px' }}>🧪</span>
               <span style={{ fontWeight: 700, color: COLORS.text }}>Chaos Lab</span>
             </div>
             <button 
@@ -451,7 +450,7 @@ export default function App() {
                 cursor: (isChaosRunning || graphData.nodes.length === 0) ? 'not-allowed' : 'pointer',
               }}
             >
-              {isChaosRunning ? 'Simulating millions of failures...' : 'Run Full Chaos Analysis'}
+              {isChaosRunning ? 'Simulating failures...' : 'Run Full Chaos Analysis'}
             </button>
             
             {chaosData && (
