@@ -8,7 +8,7 @@ Preflight AI is a cloud infrastructure risk engine that analyzes Terraform deplo
 +---------------+       +------------------+       +------------------+
 |               |       |                  |       |                  |
 |  React + Vite | <---> | FastAPI Backend  | <---> | Fireworks AI API |
-|  (Frontend)   |       | (Python)         |       | (Qwen 2.5 7B)    |
+|  (Frontend)   |       | (Python)         |       | (DeepSeek V4 Pro)|
 |               |       |                  |       |                  |
 +---------------+       +------------------+       +------------------+
                                 |
@@ -35,7 +35,7 @@ Preflight AI is a cloud infrastructure risk engine that analyzes Terraform deplo
 ## Tech stack
 - **Backend:** Python, FastAPI, NetworkX, asyncio, python-hcl2, httpx, openai SDK
 - **Frontend:** React + Vite, react-force-graph-2d
-- **AI:** Fireworks AI API (Qwen2.5-7B-Instruct)
+- **AI:** Fireworks AI API (DeepSeek V4 Pro)
 - **Deployment:** Docker + docker-compose
 
 ## Third-Party GitHub Action
