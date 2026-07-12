@@ -2,27 +2,139 @@
 
 Preflight AI is designed as a distributed microservice architecture. It consists of three main components: the Frontend (Web UI), the Backend API, and the self-hosted AMD Chaos Engine.
 
-## 1. Deploying the Backend (AWS EC2)
+## 1. Deploying the Backend (AWS EC2 & DuckDNS)
 
-The backend is built with Python & FastAPI and should be deployed on a Linux VM (like AWS EC2 or DigitalOcean).
+The backend is built with Python & FastAPI and deployed using Docker on an AWS EC2 instance. We use **DuckDNS** to provide a free domain name and **Certbot** for SSL (HTTPS) to ensure secure communication with the Vercel frontend.
 
-1. Clone the repository on your EC2 instance.
-2. Install Python 3.10+ and Terraform.
-3. Configure the Nginx reverse proxy:
-   Copy the `nginx_preflight.conf` file to `/etc/nginx/sites-available/preflight`, create a symlink to `sites-enabled`, and restart Nginx.
-4. Set up your `.env` file on the server:
-   ```env
-   FIREWORKS_API_KEY=your_fireworks_key
-   LLM_API_BASE=http://<YOUR_AMD_DROPLET_IP>:8001/v1
-   LLM_API_KEY=amd-demo-key
-   LLM_MODEL_NAME=meta-llama/Meta-Llama-3-70B-Instruct
-   ```
-5. Start the backend:
-   ```bash
-   pip install -r backend/requirements.txt
-   uvicorn main:app --host 0.0.0.0 --port 8000
-   ```
-*(For production, wrap the `uvicorn` command in a systemd service or use Docker).*
+### Step 1: AWS EC2 Provisioning (via AWS CLI)
+Alternatively, you can provision the EC2 instance and Security Group entirely via the AWS CLI:
+
+```bash
+# 1. Create a Security Group
+aws ec2 create-security-group \
+    --group-name preflight-sg \
+    --description "Security group for Preflight API"
+
+# 2. Add Inbound Rules for SSH, HTTP, HTTPS, and Docker (8000)
+aws ec2 authorize-security-group-ingress \
+    --group-name preflight-sg \
+    --protocol tcp --port 22 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress \
+    --group-name preflight-sg \
+    --protocol tcp --port 80 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress \
+    --group-name preflight-sg \
+    --protocol tcp --port 443 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress \
+    --group-name preflight-sg \
+    --protocol tcp --port 8000 --cidr 0.0.0.0/0
+
+# 3. Launch the Ubuntu 24.04 Instance (replace ami, key-name, and subnet)
+aws ec2 run-instances \
+    --image-id ami-04b70fa74e45c3917 \
+    --count 1 \
+    --instance-type t3.micro \
+    --key-name your-aws-keypair \
+    --security-groups preflight-sg \
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=Preflight-Backend}]'
+```
+*(Note: AMI IDs differ by region. Make sure to use an Ubuntu 24.04 AMI for your specific AWS region).*
+
+### Step 2: Setting up DuckDNS
+Because AWS EC2 instances often change IP addresses upon reboot (unless you pay for an Elastic IP), we use DuckDNS for dynamic DNS resolution.
+
+1. Go to [DuckDNS.org](https://www.duckdns.org/) and log in.
+2. Add a new domain (e.g., `preflight-api.duckdns.org`).
+3. Click "Update IP" to map your EC2 instance's **Public IPv4 address** to the domain.
+4. *(Critical Note)*: Ensure that the "IPv6" field in DuckDNS is left completely blank, otherwise Vercel edge functions may attempt to resolve the NAT64 IPv6 address and time out with a `502 Bad Gateway`.
+
+### Step 3: EC2 Server Setup (Docker & Nginx)
+SSH into your EC2 instance and run the following commands to install dependencies:
+
+```bash
+# Update system packages
+sudo apt update && sudo apt upgrade -y
+
+# Install Docker
+sudo apt install -y docker.io
+sudo systemctl enable --now docker
+sudo usermod -aG docker ubuntu
+
+# Install Nginx and Certbot for SSL
+sudo apt install -y nginx certbot python3-certbot-nginx
+```
+
+### Step 4: Deploying the Code with Docker
+Clone the repository, configure your environment variables, and build the Docker container:
+
+```bash
+# Clone the repository
+git clone https://github.com/YourOrg/Preflight.git
+cd Preflight/backend
+
+# Create your .env file
+cat <<EOF > .env
+FIREWORKS_API_KEY=your_fireworks_api_key_here
+EOF
+
+# Build and run the Docker container
+sudo docker build -t preflight-backend .
+sudo docker run -d --name preflight-api \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  --env-file .env \
+  preflight-backend
+```
+
+### Step 5: Nginx & Certbot SSL Configuration
+Configure Nginx as a reverse proxy to route traffic from Port 443 (HTTPS) to your Docker container on Port 8000.
+
+Create the Nginx configuration file:
+```bash
+sudo nano /etc/nginx/sites-available/preflight
+```
+
+Paste the following configuration:
+```nginx
+server {
+    server_name preflight-api.duckdns.org;
+    
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Enable the site and obtain an SSL certificate:
+```bash
+# Enable the Nginx site
+sudo ln -s /etc/nginx/sites-available/preflight /etc/nginx/sites-enabled/
+sudo rm /etc/nginx/sites-enabled/default
+sudo systemctl restart nginx
+
+# Automatically configure SSL with Certbot
+sudo certbot --nginx -d preflight-api.duckdns.org
+```
+Certbot will automatically modify your Nginx configuration to enforce HTTPS.
+
+### Step 6: GitHub Actions Vercel Proxy (Optional but Recommended)
+To prevent local network DNS caching issues, the Vercel frontend is configured to act as a proxy. In your frontend's `vercel.json`:
+
+```json
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "http://YOUR_EC2_IPV4_ADDRESS:8000/api/:path*"
+    }
+  ]
+}
+```
+This bypasses DuckDNS resolution entirely for the frontend, routing traffic securely via Vercel's edge network directly to your EC2 instance.
 
 ## 2. Deploying the Chaos Engine (AMD Developer Cloud)
 
