@@ -10,3 +10,11 @@ tfplan
 .terraform/
 .terraform.lock.hcl
 *.pem
+
+# Preflight dynamic files
+backend/main.tf
+backend/plan.json
+backend/tfplan
+backend/pr_main.tf
+backend/pr_tfplan
+backend/pr_plan.json
