@@ -436,7 +436,7 @@ export default function App() {
           {/* Chaos Lab Panel */}
           <div style={styles.chaosPanel}>
             <div style={styles.chaosHeader}>
-              <span style={{ fontWeight: 700, color: COLORS.text }}>Chaos Lab</span>
+              <span style={{ fontWeight: 700, color: COLORS.text }}>Chaos Lab (AMD MI300X)</span>
             </div>
             <button 
               onClick={runChaosAnalysis} 
@@ -609,7 +609,7 @@ export default function App() {
                   cursor: selectedNode ? 'pointer' : 'not-allowed',
                 }}
               >
-                Run simulation
+                Run simulation (FIREWORKS API)
               </button>
             )}
             <button onClick={handleReset} style={styles.resetButton}>
