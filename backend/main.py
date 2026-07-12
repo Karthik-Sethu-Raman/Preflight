@@ -139,10 +139,12 @@ async def analyze_pr_endpoint(file: UploadFile = File(...)):
         content = await file.read()
         tf_code = content.decode("utf-8")
         
+        import re
         with tempfile.TemporaryDirectory() as temp_dir:
             # Write a default provider so we don't fail on missing region
-            with open(os.path.join(temp_dir, "provider.tf"), "w", encoding="utf-8") as f:
-                f.write('provider "aws" { region = "us-west-2" }\n')
+            if not re.search(r'provider\s+"aws"', tf_code):
+                with open(os.path.join(temp_dir, "provider.tf"), "w", encoding="utf-8") as f:
+                    f.write('provider "aws" { region = "us-west-2" }\n')
                 
             # Write PR file
             pr_file_path = os.path.join(temp_dir, "pr_main.tf")
