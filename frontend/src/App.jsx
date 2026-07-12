@@ -457,7 +457,7 @@ export default function App() {
             {chaosData && (
               <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={styles.label}>Highest Risk Scenarios</div>
-                {chaosData.top_scenarios.map((scenario, idx) => (
+                {(chaosData.top_scenarios || []).map((scenario, idx) => (
                   <div key={idx} style={{ ...styles.cardInner, backgroundColor: 'rgba(0,0,0,0.2)', padding: '12px' }}>
                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                        <span style={{ fontSize: '13px', fontWeight: 600, color: COLORS.danger }}>Risk {scenario.risk_score}</span>
@@ -467,13 +467,13 @@ export default function App() {
                        {scenario.resource}
                      </div>
                      <div style={{ fontSize: '12px', color: COLORS.textMuted, lineHeight: '1.4' }}>
-                       {chaosData.explanations[scenario.resource] || `${scenario.affected_count} resources affected.`}
+                       {(chaosData.explanations || {})[scenario.resource] || `${scenario.affected_count} resources affected.`}
                      </div>
                   </div>
                 ))}
                 
                 <div style={styles.label}>Suggested Fixes</div>
-                {chaosData.recommendations.map((rec, idx) => (
+                {(chaosData.recommendations || []).map((rec, idx) => (
                   <div key={idx} style={{ ...styles.cardInner, backgroundColor: 'rgba(48, 164, 108, 0.08)', border: '1px solid rgba(48,164,108,0.2)', padding: '12px' }}>
                      <div style={{ fontSize: '13px', fontWeight: 600, color: COLORS.safe }}>{rec.title}</div>
                      <div style={{ fontSize: '12px', color: COLORS.textMuted, margin: '6px 0', lineHeight: '1.4' }}>{rec.description}</div>
