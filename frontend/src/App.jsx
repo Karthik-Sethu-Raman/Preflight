@@ -72,6 +72,8 @@ export default function App() {
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showFailureDropdown, setShowFailureDropdown] = useState(false);
+  const failureDropdownRef = useRef(null);
 
   const [simulationStarted, setSimulationStarted] = useState(false);
   const simulationStartedRef = useRef(false);
@@ -149,6 +151,17 @@ export default function App() {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Close failure dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (failureDropdownRef.current && !failureDropdownRef.current.contains(e.target)) {
+        setShowFailureDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
 
@@ -445,15 +458,47 @@ export default function App() {
 
           <div style={styles.controlGroup}>
             <div style={styles.label}>Failure scenario</div>
-            <select
-              value={failureType}
-              onChange={(e) => setFailureType(e.target.value)}
-              style={styles.select}
-            >
-              <option value="outage">System outage</option>
-              <option value="data_leak">Data leakage</option>
-              <option value="degraded">Degraded performance</option>
-            </select>
+            <div ref={failureDropdownRef} style={{ position: 'relative' }}>
+              <div
+                onClick={() => setShowFailureDropdown(!showFailureDropdown)}
+                style={{
+                  ...styles.select,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderColor: showFailureDropdown ? 'rgba(91,141,239,0.5)' : 'rgba(255,255,255,0.08)',
+                }}
+              >
+                <span>{{ outage: 'System outage', data_leak: 'Data leakage', degraded: 'Degraded performance' }[failureType]}</span>
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transition: 'transform 0.2s ease', transform: showFailureDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                  <path d="M1 1L5 5L9 1" stroke="#9ba1a9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              {showFailureDropdown && (
+                <div style={styles.customDropdownMenu}>
+                  {[{ value: 'outage', label: 'System outage' }, { value: 'data_leak', label: 'Data leakage' }, { value: 'degraded', label: 'Degraded performance' }].map((opt) => (
+                    <div
+                      key={opt.value}
+                      onClick={() => { setFailureType(opt.value); setShowFailureDropdown(false); }}
+                      style={{
+                        ...styles.customDropdownItem,
+                        backgroundColor: failureType === opt.value ? 'rgba(91,141,239,0.15)' : 'transparent',
+                        color: failureType === opt.value ? '#7da8ff' : COLORS.text,
+                      }}
+                      onMouseEnter={(e) => { if (failureType !== opt.value) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = failureType === opt.value ? 'rgba(91,141,239,0.15)' : 'transparent'; }}
+                    >
+                      <span>{opt.label}</span>
+                      {failureType === opt.value && (
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginLeft: 'auto' }}>
+                          <path d="M3 7L6 10L11 4" stroke="#5b8def" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={styles.buttonGroup}>
@@ -775,11 +820,32 @@ const styles = {
     fontWeight: 500,
     outline: 'none',
     cursor: 'pointer',
-    appearance: 'none',
-    backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239ba1a9%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")`,
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'right 14px top 50%',
-    backgroundSize: '9px auto',
+    transition: 'border-color 0.2s ease',
+  },
+  customDropdownMenu: {
+    position: 'absolute',
+    top: 'calc(100% + 6px)',
+    left: 0,
+    right: 0,
+    backgroundColor: '#1a1c20',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '10px',
+    padding: '4px',
+    zIndex: 999,
+    boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)',
+    backdropFilter: 'blur(12px)',
+    animation: 'fadeIn 0.15s ease',
+  },
+  customDropdownItem: {
+    padding: '10px 12px',
+    borderRadius: '7px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: 500,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    transition: 'background-color 0.15s ease',
   },
   buttonGroup: {
     display: 'flex',

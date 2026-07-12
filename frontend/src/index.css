@@ -98,3 +98,24 @@ button:not(:disabled):active {
 .loader .bar10 { transform: rotate(270deg) translate(0, -130%); animation-delay: -0.3s; }
 .loader .bar11 { transform: rotate(300deg) translate(0, -130%); animation-delay: -0.2s; }
 .loader .bar12 { transform: rotate(330deg) translate(0, -130%); animation-delay: -0.1s; }
+
+/* Dark-themed select dropdown */
+select {
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+select:focus {
+  border-color: rgba(91, 141, 239, 0.5) !important;
+}
+select option {
+  background-color: #1a1c20;
+  color: #e6e8eb;
+  padding: 8px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+}
+select option:hover,
+select option:checked {
+  background-color: #5b8def;
+  color: #ffffff;
+}
