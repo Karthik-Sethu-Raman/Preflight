@@ -9,3 +9,4 @@ node_modules
 tfplan
 .terraform/
 .terraform.lock.hcl
+*.pem
