@@ -419,8 +419,7 @@ export default function App() {
           {/* Chaos Lab Panel */}
           <div style={styles.chaosPanel}>
             <div style={styles.chaosHeader}>
-              <span style={{ fontSize: '18px' }}>🧪</span>
-              <span style={{ fontWeight: 700, color: COLORS.text }}>Chaos Lab</span>
+              <span style={{ fontWeight: 700, color: COLORS.text }}>Chaos Lab (Runs on AMD GPU MI300x)</span>
             </div>
             <button 
               onClick={runChaosAnalysis} 
@@ -434,7 +433,7 @@ export default function App() {
                 cursor: (isChaosRunning || graphData.nodes.length === 0) ? 'not-allowed' : 'pointer',
               }}
             >
-              {isChaosRunning ? 'Simulating millions of failures...' : 'Run Full Chaos Analysis'}
+              {isChaosRunning ? 'Running Monte Carlo Simulations' : 'Run Full Chaos Analysis'}
             </button>
             
             {chaosData && (
@@ -552,7 +551,7 @@ export default function App() {
                   cursor: selectedNode ? 'pointer' : 'not-allowed',
                 }}
               >
-                Run simulation
+                Run Simulation ( FireWorks API)
               </button>
             )}
             <button onClick={handleReset} style={styles.resetButton}>
