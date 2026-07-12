@@ -12,8 +12,8 @@ load_dotenv()
 
 # Import your hardened Phase 1, 2, and 4 logic
 from engine import build_graph_from_plan, enrich_graph_with_hcl
-from blast_radius import simulate_failure
-from agents import analyze_scenario
+from blast_radius import simulate_failure, run_chaos_simulations
+from agents import analyze_scenario, analyze_chaos_results, recommend_architecture
 
 app = FastAPI(title="Preflight Graph API")
 
@@ -115,11 +115,48 @@ def upload_tf(file: UploadFile = File(...)):
 @app.post("/api/github/analyze-pr")
 async def analyze_pr_endpoint(file: UploadFile = File(...)):
     """Receives a Terraform file from GitHub Actions and returns an AI Markdown review."""
-    from agents import analyze_pr_code
+    import asyncio
+    import subprocess
+    from agents import analyze_chaos_results, recommend_architecture, compile_pr_markdown_report
+    from engine import build_graph_from_plan, enrich_graph_with_hcl
+    from blast_radius import run_chaos_simulations
+    
     try:
         content = await file.read()
         tf_code = content.decode("utf-8")
-        markdown_report = await analyze_pr_code(tf_code)
+        
+        # 1. Save PR file
+        with open("pr_main.tf", "w", encoding="utf-8") as f:
+            f.write(tf_code)
+            
+        # 2. Run Terraform to get plan
+        subprocess.run(["terraform", "init", "-upgrade", "-input=false"], check=True, capture_output=True, cwd=".", text=True)
+        subprocess.run(["terraform", "plan", "-out=pr_tfplan", "-input=false"], check=True, capture_output=True, cwd=".", text=True)
+        result = subprocess.run(["terraform", "show", "-json", "pr_tfplan"], check=True, capture_output=True, cwd=".", text=True)
+        
+        with open("pr_plan.json", "w", encoding="utf-8") as f:
+            f.write(result.stdout)
+            
+        # 3. Build graph
+        G = build_graph_from_plan("pr_plan.json")
+        G = enrich_graph_with_hcl(G, "pr_main.tf")
+        
+        # 4. Chaos Simulations
+        chaos_results = run_chaos_simulations(G, num_simulations=50)
+        top_scenarios = chaos_results[:3]
+        
+        # 5. LLM Pipeline (AMD)
+        explanations_task = analyze_chaos_results(top_scenarios)
+        arch_task = recommend_architecture(top_scenarios)
+        explanations, recommendations = await asyncio.gather(explanations_task, arch_task)
+        
+        # 6. Final Report via Fireworks
+        markdown_report = await compile_pr_markdown_report(
+            tf_code, 
+            explanations, 
+            recommendations
+        )
+        
         return {"markdown_report": markdown_report}
     except Exception as e:
         print(f"Error during PR analysis: {e}")
@@ -154,6 +191,35 @@ async def simulate(req: SimulateRequest):
     safe_response = json.loads(json.dumps({
         "blast_radius": blast_result,
         "agents": agents_result
+    }, default=str))
+    
+    return safe_response
+
+@app.post("/api/chaos-simulate")
+async def chaos_simulate():
+    """Executes the Chaos Engineering Monte Carlo Simulation over the entire graph."""
+    import asyncio
+    G = CURRENT_GRAPH["nx_graph"]
+    if not G:
+        raise HTTPException(status_code=400, detail="Graph not initialized.")
+    
+    # Run the monte carlo simulations
+    chaos_results = run_chaos_simulations(G, num_simulations=100)
+    if not chaos_results:
+        raise HTTPException(status_code=400, detail="Failed to generate chaos results.")
+        
+    top_scenarios = chaos_results[:3] # Take top 3 for speed
+    
+    # Fire the concurrent LLM explanations and recommendations
+    explanations_task = analyze_chaos_results(top_scenarios)
+    arch_task = recommend_architecture(top_scenarios)
+    
+    explanations, recommendations = await asyncio.gather(explanations_task, arch_task)
+    
+    safe_response = json.loads(json.dumps({
+        "top_scenarios": top_scenarios,
+        "explanations": explanations.get("explanations", {}),
+        "recommendations": recommendations.get("recommendations", [])
     }, default=str))
     
     return safe_response

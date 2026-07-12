@@ -68,6 +68,8 @@ export default function App() {
   const [selectedNode, setSelectedNode] = useState(null);
   const [nodeStates, setNodeStates] = useState({}); // id -> 'failed' | 'safe'
   const [agentsData, setAgentsData] = useState(null);
+  const [chaosData, setChaosData] = useState(null);
+  const [isChaosRunning, setIsChaosRunning] = useState(false);
   const [failureType, setFailureType] = useState('outage');
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [searchQuery, setSearchQuery] = useState('');
@@ -152,6 +154,26 @@ export default function App() {
 
 
 
+  const runChaosAnalysis = async () => {
+    setIsChaosRunning(true);
+    setChaosData(null);
+    setAgentsData(null);
+    setSelectedNode(null);
+    setSimulationStarted(false);
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/chaos-simulate`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      setChaosData(data);
+    } catch (err) {
+      console.error('Chaos simulation failed:', err);
+    } finally {
+      setIsChaosRunning(false);
+    }
+  };
+
   const focusNode = useCallback((node, keepSimulation = false) => {
     // Block node selection changes while a simulation is active
     if (simulationStartedRef.current && !keepSimulation) return;
@@ -222,6 +244,7 @@ export default function App() {
   const handleReset = () => {
     setNodeStates({});
     setAgentsData(null);
+    setChaosData(null);
     setSelectedNode(null);
     setSimulationStarted(false);
     setSearchQuery('');
@@ -390,6 +413,61 @@ export default function App() {
           >
             {isUploading ? 'Uploading…' : 'Upload Terraform (.tf)'}
           </button>
+
+          <div style={styles.divider} />
+
+          {/* Chaos Lab Panel */}
+          <div style={styles.chaosPanel}>
+            <div style={styles.chaosHeader}>
+              <span style={{ fontSize: '18px' }}>🧪</span>
+              <span style={{ fontWeight: 700, color: COLORS.text }}>Chaos Lab</span>
+            </div>
+            <button 
+              onClick={runChaosAnalysis} 
+              disabled={isChaosRunning || graphData.nodes.length === 0}
+              style={{
+                ...styles.button,
+                width: '100%',
+                backgroundColor: 'rgba(201, 162, 39, 0.15)',
+                border: '1px solid rgba(201, 162, 39, 0.4)',
+                color: '#c9a227',
+                cursor: (isChaosRunning || graphData.nodes.length === 0) ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {isChaosRunning ? 'Simulating millions of failures...' : 'Run Full Chaos Analysis'}
+            </button>
+            
+            {chaosData && (
+              <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={styles.label}>Highest Risk Scenarios</div>
+                {chaosData.top_scenarios.map((scenario, idx) => (
+                  <div key={idx} style={{ ...styles.cardInner, backgroundColor: 'rgba(0,0,0,0.2)', padding: '12px' }}>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                       <span style={{ fontSize: '13px', fontWeight: 600, color: COLORS.danger }}>Risk {scenario.risk_score}</span>
+                       <span style={styles.badge}>{scenario.failure_type}</span>
+                     </div>
+                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', margin: '6px 0', color: COLORS.text }}>
+                       {scenario.resource}
+                     </div>
+                     <div style={{ fontSize: '12px', color: COLORS.textMuted, lineHeight: '1.4' }}>
+                       {chaosData.explanations[scenario.resource] || `${scenario.affected_count} resources affected.`}
+                     </div>
+                  </div>
+                ))}
+                
+                <div style={styles.label}>Suggested Fixes</div>
+                {chaosData.recommendations.map((rec, idx) => (
+                  <div key={idx} style={{ ...styles.cardInner, backgroundColor: 'rgba(48, 164, 108, 0.08)', border: '1px solid rgba(48,164,108,0.2)', padding: '12px' }}>
+                     <div style={{ fontSize: '13px', fontWeight: 600, color: COLORS.safe }}>{rec.title}</div>
+                     <div style={{ fontSize: '12px', color: COLORS.textMuted, margin: '6px 0', lineHeight: '1.4' }}>{rec.description}</div>
+                     <div style={{ fontSize: '12px', fontWeight: 600, color: COLORS.text }}>
+                       Est. Risk Reduction: {rec.estimated_risk_reduction_pct}%
+                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div style={styles.divider} />
 
@@ -1077,5 +1155,17 @@ const styles = {
     fontFamily: "'JetBrains Mono', monospace",
     marginTop: '10px',
     transition: 'border-color 0.2s ease',
+  },
+  chaosPanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  chaosHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '4px',
   }
 };
+
